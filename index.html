@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<!--
+
+-->
+<html>
+
+<script>
+(function(w,d,s,g,js,fs){
+  g=w.gapi||(w.gapi={});g.analytics={q:[],ready:function(f){this.q.push(f);}};
+  js=d.createElement(s);fs=d.getElementsByTagName(s)[0];
+  js.src='https://apis.google.com/js/platform.js';
+  fs.parentNode.insertBefore(js,fs);js.onload=function(){g.load('analytics');};
+}(window,document,'script'));
+</script>
+        
+<body>
+    
+    <div id="embed-api-auth-container"></div>
+    <div id="view-selector-container"></div>
+    <div id="view-name"></div>
+    <div id="active-users-container"></div>
+    <div id="date-range-selector-2-container"></div>
+    
+    <p id="test">
+    </p>
+    <p id="AOV">
+    </p>
+    <p id="RPR">
+    </p>
+    <p id="TBP">
+    </p>
+    <p id="REV">
+    </p>
+    <p id="CLTV">
+    </p>
+    
+    <p id="GAOV">
+    </p>
+    <p id="CR">
+    </p>
+    <p id="GREV">
+    </p>
+    <p id="PVV">
+    </p>
+    <p ID="GBAN">
+    </p>
+    
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/1.0.2/Chart.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.10.2/moment.min.js"></script>
+<script src="https://ga-dev-tools.appspot.com/public/javascript/embed-api/components/view-selector2.js"></script>
+<script src="https://ga-dev-tools.appspot.com/public/javascript/embed-api/components/date-range-selector.js"></script>
+<script src="https://ga-dev-tools.appspot.com/public/javascript/embed-api/components/active-users.js"></script>
+<link rel="stylesheet" href="https://ga-dev-tools.appspot.com/public/css/chartjs-visualizations.css">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    
+    <form method="get" action="https://95f06b4b.ngrok.io">
+        <input type='date' id='date_sel' oninput='date_update();'>
+    </form>
+    
+    <div class="Chartjs">
+        <h2>AOV</h2>
+        <figure class="Chartjs-figure" id="chart-1-container"></figure>
+        <ol class="Chartjs-legend" id="legend-1-container"></ol>
+    </div>
+    <div class="Chartjs">
+        <h2>CR</h2>
+        <figure class="Chartjs-figure" id="chart-2-container"></figure>
+        <ol class="Chartjs-legend" id="legend-2-container"></ol>
+    </div>
+    <div class="Chartjs">
+        <h2>REV</h2>
+        <figure class="Chartjs-figure" id="chart-3-container"></figure>
+        <ol class="Chartjs-legend" id="legend-3-container"></ol>
+    </div>
+    <div class="Chartjs">
+        <h2>Per Visitor Value</h2>
+        <figure class="Chartjs-figure" id="chart-4-container"></figure>
+        <ol class="Chartjs-legend" id="legend-4-container"></ol>
+    </div>
+    <div class="Chartjs">
+        <h2>Shop Stage (by pageview)</h2>
+        <figure class="Chartjs-figure" id="chart-5-container"></figure>
+        <ol class="Chartjs-legend" id="legend-5-container"></ol>
+    </div>
+    
+
+
+
+<script>
+function date_update(){
+    shopify_data();
+    var date = document.getElementById("date_sel").value;
+    $.ajax('https://95f06b4b.ngrok.io', function(date) {
+        alert( "Data: " + date);
+    });
+    console.log('date update');
+}
+
+function shopify_data(){
+  var cookie_data = document.cookie.split(/[;=]+/);
+  function find_cookie(cookie) {
+    var numb = cookie_data.indexOf(cookie);
+    numb = cookie_data[numb + 1];
+    console.log("cookie func");
+    return numb;
+  }
+  
+  //google store metric data
+  var GAOV = [];
+  var GREV = [];
+  var CR = [];
+  var PVV = [];
+  var GBAN = [];
+  
+  //SHOPIFY STORE METRIC DATA
+  cookie_data = document.cookie.split(/[;=]+/);
+  var AOV = find_cookie(" AOV:");
+  var RPR = find_cookie(" RPR:");
+  var CLTV = find_cookie(" CLTV:");
+  var REV = find_cookie(" REV:");
+  var TBP = find_cookie(" TBP:");
+    
+  //Shopify data
+  document.getElementById("AOV").innerHTML = 'SHOP AOV: ' + AOV;
+  document.getElementById("RPR").innerHTML = 'SHOP RPR: ' + RPR;
+  document.getElementById("TBP").innerHTML = 'SHOP TBP: ' + TBP;
+  document.getElementById("REV").innerHTML = 'SHOP REV: ' + REV;
+  document.getElementById("CLTV").innerHTML = 'SHOP CLTV: ' + CLTV;
+}
+
+
+
+gapi.analytics.ready(function() {
+  gapi.analytics.auth.authorize({
+    container: 'embed-api-auth-container',
+    clientid: '592230852734-lbn3oialjcq154tgs6kjm7lepm8e0qfd.apps.googleusercontent.com'
+  });
+
+  //Create a new ViewSelector2 instance to be rendered inside of an element with the id "view-selector-container".
+  var viewSelector = new gapi.analytics.ext.ViewSelector2({
+    container: 'view-selector-container'
+  })
+  .execute();
+  
+  //Update the activeUsers component, the Chartjs charts, and the dashboard title whenever the user changes the view.
+  viewSelector.on('viewChange', function(data) {
+    var title = document.getElementById('view-name');
+    title.textContent = data.property.name + ' (' + data.view.name + ')';
+    renderWeekOverWeekChart(data.ids);  //aov
+    renderWeekOverWeekChart2(data.ids); //cr
+    renderWeekOverWeekChart3(data.ids); //rev
+    renderWeekOverWeekChart4(data.ids); //pvv
+    ShopStageChart(data.ids); //shop stage
+    //renderWeekOverWeekChart5(data.ids); //transactions
+    //renderWeekOverWeekChart6(data.ids); //sessIons
+  });
+  
+  
+
+ function renderWeekOverWeekChart(ids) {
+    var now = moment();
+
+    var thisWeek = query({
+      'ids': ids,
+      'dimensions': 'ga:date,ga:nthDay',
+      'metrics': 'ga:revenuePerTransaction',
+      'start-date': moment(now).subtract(1, 'day').day(0).format('YYYY-MM-DD'),
+      'end-date': moment(now).format('YYYY-MM-DD')
+    });
+
+    var lastWeek = query({
+      'ids': ids,
+      'dimensions': 'ga:date,ga:nthDay',
+      'metrics': 'ga:revenuePerTransaction',
+      'start-date': moment(now).subtract(1, 'day').day(0).subtract(1, 'week')
+         .format('YYYY-MM-DD'),
+      'end-date': moment(now).subtract(1, 'day').day(6).subtract(1, 'week')
+         .format('YYYY-MM-DD')
+    });
+
+    Promise.all([thisWeek, lastWeek]).then(function(results) {
+
+      var data1 = results[0].rows.map(function(row) { return +row[2]; });
+      var data2 = results[1].rows.map(function(row) { return +row[2]; });
+      document.getElementById("CR").innerHTML = data2;
+      var labels = results[1].rows.map(function(row) { return +row[0]; });
+      labels = labels.map(function(label) {
+        return moment(label, 'YYYYMMDD').format('ddd');
+      });
+
+      var data = {
+        labels : labels,
+        datasets : [
+          {
+            label: 'Last Week',
+            fillColor : 'rgba(220,220,220,0.5)',
+            strokeColor : 'rgba(220,220,220,1)',
+            pointColor : 'rgba(220,220,220,1)',
+            pointStrokeColor : '#fff',
+            data : data2
+          },
+          {
+            label: 'This Week',
+            fillColor : 'rgba(151,187,205,0.5)',
+            strokeColor : 'rgba(151,187,205,1)',
+            pointColor : 'rgba(151,187,205,1)',
+            pointStrokeColor : '#fff',
+            data : data1
+          }
+        ]
+      };
+
+      new Chart(makeCanvas('chart-1-container')).Line(data);
+      generateLegend('legend-1-container', data.datasets);
+    });
+  }
+
+
+
+
+
+ 
+  function renderWeekOverWeekChart2(ids) {
+    var now = moment();
+
+    var thisWeek2 = query({
+      'ids': ids,
+      'dimensions': 'ga:date,ga:nthDay',
+      'metrics': 'ga:transactionsPerSession',
+      'start-date': moment(now).subtract(1, 'day').day(0).format('YYYY-MM-DD'),
+      'end-date': moment(now).format('YYYY-MM-DD')
+    });
+
+    var lastWeek2 = query({
+      'ids': ids,
+      'dimensions': 'ga:date,ga:nthDay',
+      'metrics': 'ga:transactionsPerSession',
+      'start-date': moment(now).subtract(1, 'day').day(0).subtract(1, 'week')
+         .format('YYYY-MM-DD'),
+      'end-date': moment(now).subtract(1, 'day').day(6).subtract(1, 'week')
+         .format('YYYY-MM-DD')
+    });
+
+    Promise.all([thisWeek2, lastWeek2]).then(function(results) {
+
+      var data1 = results[0].rows.map(function(row) { return +row[2]; });
+      var data2 = results[1].rows.map(function(row) { return +row[2]; });
+      document.getElementById("CR").innerHTML = data2;
+      var labels = results[1].rows.map(function(row) { return +row[0]; });
+
+      labels = labels.map(function(label) {
+        return moment(label, 'YYYYMMDD').format('ddd');
+      });
+
+      var data = {
+        labels : labels,
+        datasets : [
+          {
+            label: 'Last Week',
+            fillColor : 'rgba(220,220,220,0.5)',
+            strokeColor : 'rgba(220,220,220,1)',
+            pointColor : 'rgba(220,220,220,1)',
+            pointStrokeColor : '#fff',
+            data : data2
+          },
+          {
+            label: 'This Week',
+            fillColor : 'rgba(151,187,205,0.5)',
+            strokeColor : 'rgba(151,187,205,1)',
+            pointColor : 'rgba(151,187,205,1)',
+            pointStrokeColor : '#fff',
+            data : data1
+          }
+        ]
+      };
+
+      new Chart(makeCanvas('chart-2-container')).Line(data);
+      generateLegend('legend-2-container', data.datasets);
+    });
+  }
+  
+  
+  
+  
+  
+  
+  function renderWeekOverWeekChart3(ids) {
+    var now = moment();
+
+    var thisWeek3 = query({
+      'ids': ids,
+      'dimensions': 'ga:date,ga:nthDay',
+      'metrics': 'ga:transactionRevenue',
+      'start-date': moment(now).subtract(1, 'day').day(0).format('YYYY-MM-DD'),
+      'end-date': moment(now).format('YYYY-MM-DD')
+    });
+
+    var lastWeek3 = query({
+      'ids': ids,
+      'dimensions': 'ga:date,ga:nthDay',
+      'metrics': 'ga:transactionRevenue',
+      'start-date': moment(now).subtract(1, 'day').day(0).subtract(1, 'week')
+         .format('YYYY-MM-DD'),
+      'end-date': moment(now).subtract(1, 'day').day(6).subtract(1, 'week')
+         .format('YYYY-MM-DD')
+    });
+
+    Promise.all([thisWeek3, lastWeek3]).then(function(results) {
+
+      var data1 = results[0].rows.map(function(row) { return +row[2]; });
+      var data2 = results[1].rows.map(function(row) { return +row[2]; });
+      document.getElementById("GREV").innerHTML = data2;
+      var labels = results[1].rows.map(function(row) { return +row[0]; });
+
+      labels = labels.map(function(label) {
+        return moment(label, 'YYYYMMDD').format('ddd');
+      });
+
+      var data = {
+        labels : labels,
+        datasets : [
+          {
+            label: 'Last Week',
+            fillColor : 'rgba(220,220,220,0.5)',
+            strokeColor : 'rgba(220,220,220,1)',
+            pointColor : 'rgba(220,220,220,1)',
+            pointStrokeColor : '#fff',
+            data : data2
+          },
+          {
+            label: 'This Week',
+            fillColor : 'rgba(151,187,205,0.5)',
+            strokeColor : 'rgba(151,187,205,1)',
+            pointColor : 'rgba(151,187,205,1)',
+            pointStrokeColor : '#fff',
+            data : data1
+          }
+        ]
+      };
+
+      new Chart(makeCanvas('chart-3-container')).Line(data);
+      generateLegend('legend-3-container', data.datasets);
+    });
+  }
+  
+  
+  
+  
+  
+  
+  
+  function renderWeekOverWeekChart4(ids) {
+    var now = moment(); 
+    var thisWeek4 = query({
+      'ids': ids,
+      'dimensions': 'ga:date,ga:nthDay',
+      'metrics': 'ga:transactionRevenuePerSession',
+      'start-date': moment(now).subtract(1, 'day').day(0).format('YYYY-MM-DD'),
+      'end-date': moment(now).format('YYYY-MM-DD')
+    });
+
+    var lastWeek4 = query({
+      'ids': ids,
+      'dimensions': 'ga:date,ga:nthDay',
+      'metrics': 'ga:transactionRevenuePerSession',
+      'start-date': moment(now).subtract(1, 'day').day(0).subtract(1, 'week')
+         .format('YYYY-MM-DD'),
+      'end-date': moment(now).subtract(1, 'day').day(6).subtract(1, 'week')
+         .format('YYYY-MM-DD')
+    });
+
+    Promise.all([thisWeek4, lastWeek4]).then(function(results) {
+
+      var data1 = results[0].rows.map(function(row) { return +row[2]; });
+      var data2 = results[1].rows.map(function(row) { return +row[2]; });
+      document.getElementById("PVV").innerHTML = data2;
+      var labels = results[1].rows.map(function(row) { return +row[0]; });
+
+      labels = labels.map(function(label) {
+        return moment(label, 'YYYYMMDD').format('ddd');
+      });
+
+      var data = {
+        labels : labels,
+        datasets : [
+          {
+            label: 'Last Week',
+            fillColor : 'rgba(220,220,220,0.5)',
+            strokeColor : 'rgba(220,220,220,1)',
+            pointColor : 'rgba(220,220,220,1)',
+            pointStrokeColor : '#fff',
+            data : data2
+          },
+          {
+            label: 'This Week',
+            fillColor : 'rgba(151,187,205,0.5)',
+            strokeColor : 'rgba(151,187,205,1)',
+            pointColor : 'rgba(151,187,205,1)',
+            pointStrokeColor : '#fff',
+            data : data1
+          }
+        ]
+      };
+
+      new Chart(makeCanvas('chart-4-container')).Line(data);
+      generateLegend('legend-4-container', data.datasets);
+    });
+  }
+  
+  
+  
+  
+  
+  
+//actually a pie chart
+function ShopStageChart(ids) {
+    query({
+      'ids': ids,
+      'dimensions': 'ga:shoppingStage',
+      'metrics': 'ga:sessions',
+      'sort': '-ga:sessions',
+      'max-results': 10
+    })
+    .then(function(response) {
+
+      var data = [];
+      var colors = ['#4D5360','#949FB1','#D4CCC5','#E2EAE9','#F7464A'];
+
+      response.rows.forEach(function(row, i) {
+        data.push({ value: +row[1], color: colors[i], label: row[0] });
+      });
+
+      new Chart(makeCanvas('chart-5-container')).Doughnut(data);
+      generateLegend('legend-5-container', data);
+    });
+  }
+  
+  
+  
+  
+  
+  
+  function sessions(ids) {
+    var now = moment();
+
+    var thisWeek5 = query({
+      'ids': ids,
+      'dimensions': 'ga:date,ga:nthDay',
+      'metrics': 'ga:sessions',
+      'start-date': moment(now).subtract(1, 'day').day(0).format('YYYY-MM-DD'),
+      'end-date': moment(now).format('YYYY-MM-DD')
+    });
+
+    var lastWeek5 = query({
+      'ids': ids,
+      'dimensions': 'ga:date,ga:nthDay',
+      'metrics': 'ga:sessions',
+      'start-date': moment(now).subtract(1, 'day').day(0).subtract(1, 'week')
+          .format('YYYY-MM-DD'),
+      'end-date': moment(now).subtract(1, 'day').day(6).subtract(1, 'week')
+          .format('YYYY-MM-DD')
+    });
+
+    Promise.all([thisWeek3, lastWeek3]).then(function(results) {
+
+      var data1 = results[0].rows.map(function(row) { return +row[2]; });
+      var data2 = results[1].rows.map(function(row) { return +row[2]; });
+      var labels = results[1].rows.map(function(row) { return +row[0]; });
+      
+      //document.getElementById("AOV").innerHTML = data2;
+      sess = data2;
+      //document.getElementById("AOV").innerHTML = sess;
+      
+      labels = labels.map(function(label) {
+        return moment(label, 'YYYYMMDD').format('ddd');
+      });
+      });
+  }
+  
+
+  /**
+   * Extend the Embed APIs `gapi.analytics.report.Data` component to
+   * return a promise the is fulfilled with the value returned by the API.
+   * @param {Object} params The request parameters.
+   * @return {Promise} A promise.
+   */
+  function query(params) {
+    return new Promise(function(resolve, reject) {
+      var data = new gapi.analytics.report.Data({query: params});
+      data.once('success', function(response) { resolve(response); })
+          .once('error', function(response) { reject(response); })
+          .execute();
+    });
+  }
+
+
+  /**
+   * Create a new canvas inside the specified element. Set it to be the width
+   * and height of its container.
+   * @param {string} id The id attribute of the element to host the canvas.
+   * @return {RenderingContext} The 2D canvas context.
+   */
+  function makeCanvas(id) {
+    var container = document.getElementById(id);
+    var canvas = document.createElement('canvas');
+    var ctx = canvas.getContext('2d');
+
+    container.innerHTML = '';
+    canvas.width = 250;
+    canvas.height = 250;
+    container.appendChild(canvas);
+
+    return ctx;
+  }
+
+
+  /**
+   * Create a visual legend inside the specified element based off of a
+   * Chart.js dataset.
+   * @param {string} id The id attribute of the element to host the legend.
+   * @param {Array.<Object>} items A list of labels and colors for the legend.
+   */
+  function generateLegend(id, items) {
+    var legend = document.getElementById(id);
+    legend.innerHTML = items.map(function(item) {
+      var color = item.color || item.fillColor;
+      var label = item.label;
+      return '<li><i style="background:' + color + '"></i>' +
+          escapeHtml(label) + '</li>';
+    }).join('');
+  }
+
+
+  // Set some global Chart.js defaults.
+  Chart.defaults.global.animationSteps = 60;
+  Chart.defaults.global.animationEasing = 'easeInOutQuart';
+  Chart.defaults.global.responsive = true;
+  Chart.defaults.global.maintainAspectRatio = false;
+
+
+  /**
+   * Escapes a potentially unsafe HTML string.
+   * @param {string} str An string that may contain HTML entities.
+   * @return {string} The HTML-escaped string.
+   */
+  function escapeHtml(str) {
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
+  }
+
+});
+
+
+</script>
+</body>
+</html>
