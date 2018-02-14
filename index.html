@@ -82,14 +82,20 @@
 
 
 <script>
-  function date_update() {
-    shopify_data();
+  function date_update(){
     var date = document.getElementById("date_sel").value;
-    $.ajax('https://95f06b4b.ngrok.io', function (date) {
-      alert("Data: " + date);
+    var date1 = document.getElementById("date_sel1").value;
+     $.ajax({
+    type: "GET",
+    url: 'https://aa503487.ngrok.io',
+    data: 'date='+date+'&date1='+date1,
+    datatype: "html",
+    success: function(result){
+        shopify_data();
+    }
     });
-    console.log('date update');
-  }
+};
+
 
   function shopify_data() {
     var cookie_data = document.cookie.split(/[;=]+/);
