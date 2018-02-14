@@ -1,5 +1,3 @@
-
-
 const dotenv = require('dotenv').config();
 const express = require('express');
 const app = express();
@@ -79,17 +77,25 @@ app.get('/', (req, res) => {
             if (res.statusCode == 200 || res.statusCode == 304) {
                 console.log("callback status: " + res.statusCode); //status code(200 successful)
             var data = JSON.parse(shopResponse); //raw data
+            if (data.orders.length == 0){
+                console.log("no orders")
+                res.cookie('RPR: ', 'undefined');
+                res.cookie('TBP: ', 'undefined');
+                res.cookie('CLTV: ', 'undefined');
+                res.cookie('AOV: ', 'undefined');
+                res.cookie('REV: ', 0);
+                res.sendfile('index.html');
+                return;
+            }
+            
             var order_id = []; //list of customer ids and order dates
             var order_dupes = []; //list of returning customer ids and order dates
-            
             var customers = []; //list of customers that ordered
             var new_customers = []; //list of new customers
             var returning_customers = []; //list of returning customers
-            
             var orders_count = []; //number of orders per customer
             var total_orders = 0.0; //total spent on orders across all customers
             var no_orders = parseInt(data.orders.length); //total orders
-            
             //var timespan = (datetime1.getTime() - datetime.getTime()); //length of timeframe given in milliseconds
             var TBP = 0; //time between purchases
             var seen = {}; 
@@ -177,7 +183,7 @@ app.get('/', (req, res) => {
             console.log('AOV: ' + total_orders / no_orders); //Average Order Value
             console.log('CLTV: ' + total_orders / customers.length); //Customer Lifetime Value
             console.log('RPR: ' + returning_customers.length / customers.length); //Repeat Purchase Rate
-            //console.log('TBP: ' + TBP / RCO.length); //time between purchase
+            console.log('TBP: ' + TBP / RCO.length); //naive Time Between Purchase
             
             //create cookies to pass data across pages
             res.cookie('RPR: ', returning_customers.length / customers.length);
