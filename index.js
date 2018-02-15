@@ -1,3 +1,4 @@
+
 const dotenv = require('dotenv').config();
 const express = require('express');
 const app = express();
@@ -150,17 +151,6 @@ app.get('/', (req, res) => {
             sort_arr.sort();
             RCO.push(sort_arr);
             
-            //get time between first and second purchase
-            for (i=0; i < RCO.length; i++) {
-                var date_time = RCO[i][0].split('T'); //first purchase date
-                var date_time1 = RCO[i][1].split('T'); //second purchase date
-                //date_time[0].split('-');
-                date_time1[0].split('-');
-                var date_time = new Date(date_time[0].split('-'));
-                var date_time1 = new Date(date_time1[0].split('-'));
-                TBP += date_time.getTime() - date_time1.getTime();
-            }
-            
             //console.log(data);
             //console.log('returning c data: ' + order_dupes);
             //console.log('c data: ' + order_id);
@@ -263,138 +253,118 @@ app.get('/shopify/callback', (req, res) => {
         const shopRequestHeaders = {
             'X-Shopify-Access-Token': accessToken
         };
-        res.sendfile('index.html');
         token = accessToken;
-        /*
-        token = accessToken;
-        //use access token
-        const date = '2018-02-08';
-        const time = '23:59:59';
-        const date1 = '2018-02-01';
-        const time1 = '23:59:59';
-        const date_url = 'created_at_max=' + date + 't' + time + '&' + 'create_at_min=' + date1 + 't' + time1;
-        const f_status = 'financial_status=any';
-        //const date_url = 'created_at_max=2018-02-08t23:59:59&created_at_min=2018-02-01t23:59:59';
-        const order_url = 'https://' + shop + '/admin/orders.json?' + f_status + '&' + date_url;
+        var order_url = 'https://' + shop + '/admin/orders.json';
         request.get(order_url, { headers: shopRequestHeaders })
         .then((shopResponse) => {
-            console.log("callback status: " + res.statusCode); //status code(200 successful)
-            var data = JSON.parse(shopResponse); //raw data
-            var order_id = []; //list of customer ids and order dates
-            var order_dupes = []; //list of returning customer ids and order dates
-            
-            var customers = []; //list of customers that ordered
-            var new_customers = []; //list of new customers
-            var returning_customers = []; //list of returning customers
-            
-            var orders_count = []; //number of orders per customer
-            var total_orders = 0.0; //total spent on orders across all customers
-            var no_orders = parseInt(data.orders.length); //total orders
-            
-            //var timespan = (datetime1.getTime() - datetime.getTime()); //length of timeframe given in milliseconds
-            var TBP = 0; //time between purchases
-            var seen = {}; 
-            var j = 0; //customer counter
-            
-            //create list of customers, create list of repeat customer orders.
-            //calculate revenue
-            for (i = 0; i < no_orders; i++) { 
-                total_orders += parseFloat(data.orders[i].total_price);
-                order_id.push([data.orders[i].customer.id, data.orders[i].created_at]);
-                var item = order_id[i][0];
-                if (seen[item] !== 1){
-                    seen[item] = 1;
-                    customers[j++] = item;
-                    orders_count.push(data.orders[i].customer.orders_count);
+            console.log("shop data status: " + res.statusCode); //status code(200 successful)
+            if (res.statusCode == 200 || res.statusCode == 304) {
+                console.log("callback status: " + res.statusCode); //status code(200 successful)
+                var data = JSON.parse(shopResponse); //raw data
+                if (data.orders.length == 0){
+                    console.log("no orders")
+                    res.cookie('RPR: ', 'undefined');
+                    res.cookie('TBP: ', 'undefined');
+                    res.cookie('CLTV: ', 'undefined');
+                    res.cookie('AOV: ', 'undefined');
+                    res.cookie('REV: ', 0);
+                    res.sendfile('index.html');
+                    return;
                 }
-                if (data.orders[i].customer.orders_count !== 1){
-                    order_dupes.push([data.orders[i].customer.id, data.orders[i].created_at]);
-                }  
-            }   
+            
+                console.log('variables');
+                var order_id = []; //list of customer ids and order dates
+                var order_dupes = []; //list of returning customer ids and order dates
+                var customers = []; //list of customers that ordered
+                var new_customers = []; //list of new customers
+                var returning_customers = []; //list of returning customers
+                var orders_count = []; //number of orders per customer
+                var total_orders = 0.0; //total spent on orders across all customers
+                var no_orders = parseInt(data.orders.length); //total orders
+                //var timespan = (datetime1.getTime() - datetime.getTime()); //length of timeframe given in milliseconds
+                var TBP = 0; //time between purchases
+                var seen = {}; 
+                var j = 0; //customer counter
+            
+                console.log('loop');
+                //create list of customers, create list of repeat customer orders.
+                //calculate revenue
+                for (i = 0; i < no_orders; i++) { 
+                    total_orders += parseFloat(data.orders[i].total_price);
+                    order_id.push([data.orders[i].customer.id, data.orders[i].created_at]);
+                    var item = order_id[i][0];
+                    if (seen[item] !== 1){
+                        seen[item] = 1;
+                        customers[j++] = item;
+                        orders_count.push(data.orders[i].customer.orders_count);
+                    }
+                    if (data.orders[i].customer.orders_count !== 1){
+                        order_dupes.push([data.orders[i].customer.id, data.orders[i].created_at]);
+                    }  
+                }   
            
-            //check if customer has ordered before
-            //create list of returning and new customers
-            for (i = 0; i < customers.length; i++) {
-                if (orders_count[i] > 1) {
-                    returning_customers.push(customers[i]);
+                console.log('new/repeat');
+                //check if customer has ordered before
+                //create list of returning and new customers
+                for (i = 0; i < customers.length; i++) {
+                    if (orders_count[i] > 1) {
+                        returning_customers.push(customers[i]);
                     
+                    }
+                    if (orders_count[i] === 1) {
+                        new_customers.push(customers[i]);
+                    }
                 }
-                if (orders_count[i] === 1) {
-                    new_customers.push(customers[i]);
+            
+
+                console.log('sort');
+                //create orders list for repeat customers. sort by time placed. 
+                var sort_arr = [];
+                var RCO = [];
+                var len = order_dupes.length;
+                order_dupes.sort();
+                for (i = 1; i < len ; i++){
+                    sort_arr.push(order_dupes[i-1][1]);
+                    if (order_dupes[i][0] !== order_dupes[i-1][0]){
+                        sort_arr.sort();
+                        RCO.push(sort_arr);
+                        sort_arr = [];
+                    }
                 }
-            }
+                sort_arr.push(order_dupes[len-1][1]);
+                sort_arr.sort();
+                RCO.push(sort_arr);
             
-            //order_dupes.push([369318002732, 'rabble dabble']);
-            //order_dupes.push([369318002732, '2018-02-03T17:36:58-05:00']);
-            //order_dupes.push([369317740588, 'dabble rabble']);
-            
-            //create orders list for repeat customers. sort by time placed. 
-            var sort_arr = [];
-            var RCO = [];
-            var len = order_dupes.length;
-            order_dupes.sort();
-            for (i = 1; i < len ; i++){
-                sort_arr.push(order_dupes[i-1][1]);
-                if (order_dupes[i][0] !== order_dupes[i-1][0]){
-                    sort_arr.sort();
-                    RCO.push(sort_arr);
-                    sort_arr = [];
+                console.log('time between');
+                //get time between first and second purchase
+                for (i=0; i < RCO.length; i++) {
+                    var date_time = RCO[i][0].split('T'); //first purchase date
+                    var date_time1 = RCO[i][1].split('T'); //second purchase date
+                    //date_time[0].split('-');
+                    date_time1[0].split('-');
+                    var date_time = new Date(date_time[0].split('-'));
+                    var date_time1 = new Date(date_time1[0].split('-'));
+                    TBP += date_time.getTime() - date_time1.getTime();
                 }
+            
+                console.log('cookies');
+                //create cookies to pass data across pages
+                res.cookie('RPR: ', returning_customers.length / customers.length);
+                res.cookie('TBP: ', TBP / RCO.length);
+                res.cookie('CLTV: ', total_orders / customers.length);
+                res.cookie('AOV: ', total_orders / no_orders);
+                res.cookie('REV: ', total_orders);
+            
+                console.log('index');
+                res.sendfile('index.html');
             }
-            sort_arr.push(order_dupes[len-1][1]);
-            sort_arr.sort();
-            RCO.push(sort_arr);
-            
-            //get time between first and second purchase
-            for (i=0; i < RCO.length; i++) {
-                var date_time = RCO[i][0].split('T'); //first purchase date
-                var date_time1 = RCO[i][1].split('T'); //second purchase date
-                //date_time[0].split('-');
-                date_time1[0].split('-');
-                var date_time = new Date(date_time[0].split('-'));
-                var date_time1 = new Date(date_time1[0].split('-'));
-                TBP += date_time.getTime() - date_time1.getTime();
+            else {
+                return 0;
             }
-            
-            //console.log(data);
-            //console.log('returning c data: ' + order_dupes);
-            //console.log('c data: ' + order_id);
-            //console.log(customers);
-            //console.log(returning_customers);
-            //console.log(new_customers);
-            //console.log('order count: ' + orders_count);
-            //console.log(RCO);
-            //console.log(accessToken)
-            //console.log('timespan: ' + timespan);
-            //console.log('customers: ' + customers.length);
-            //console.log('repeat customers: ' + returning_customers.length);
-            //console.log('new customers: ' + new_customers.length);
-            //console.log('number of orders: ' + no_orders);
-            
-            //metrics
-            //console.log('REV: ' + total_orders); //Revenue
-            //console.log('AOV: ' + total_orders / no_orders); //Average Order Value
-            //console.log('CLTV: ' + total_orders / customers.length); //Customer Lifetime Value
-            //console.log('RPR: ' + returning_customers.length / customers.length); //Repeat Purchase Rate
-            //console.log('TBP: ' + TBP / RCO.length); //naive Time Between Purchase
-            
-            //create cookies to pass data across pages
-            res.cookie('RPR: ', returning_customers.length / customers.length);
-            res.cookie('TBP: ', TBP / RCO.length);
-            res.cookie('CLTV: ', total_orders / customers.length);
-            res.cookie('AOV: ', total_orders / no_orders);
-            res.cookie('REV: ', total_orders);
-            res.cookie('AccessToken: ', accessToken);
-            res.cookie('shop: ', shop);
-            
-            res.sendfile("index.html");
-        })
-        .catch((error) => {
-        res.status(error.statusCode).send(error.error.error_description); 
-        }); */
+        });
     }) 
     .catch((error) => {
-        res.status(error.statusCode).send(error.error.error_description);
+        console.log('second error of some kind?');
     });
     
     } else {
