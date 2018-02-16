@@ -1,7 +1,4 @@
 <!DOCTYPE html>
-<!--
-
--->
 <html>
 
 <script>
@@ -40,10 +37,10 @@
 <link rel="stylesheet" href="https://ga-dev-tools.appspot.com/public/css/chartjs-visualizations.css">
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
     
-    <form action="https://aa503487.ngrok.io" method="GET">
+    <form action="https://4253c6aa.ngrok.io" method="GET">
         <input type='date' id='date_sel' oninput='date_update();'>
     </form>
-    <form method="get" action="https://aa503487.ngrok.io">
+    <form method="get" action="https://4253c6aa.ngrok.io">
         <input type='date' id='date_sel1' oninput='date_update();'>
     </form>
     
@@ -88,18 +85,20 @@
 
 <script>
 function date_update(){
-    var date = document.getElementById("date_sel").value;
-    var date1 = document.getElementById("date_sel1").value;
+    var dates = [document.getElementById("date_sel").value, 
+                 document.getElementById("date_sel1").value];
+    dates.sort();
     $.ajax({
         type: "GET",
-        url: 'https://aa503487.ngrok.io',
-        data: 'date='+date+'&date1='+date1,
+        url: 'https://4253c6aa.ngrok.io',
+        data: 'date='+dates[1]+'&date1='+dates[0],
         datatype: "html",
         success: function(result){
             shopify_data();
         }
     });
 };
+
 
 //get data from cookie
 shopify_data();
@@ -128,6 +127,7 @@ function shopify_data(){
     document.getElementById("CLTV").innerHTML = 'SHOP CLTV: ' + CLTV;
 }
 
+
 //get the date from x days ago, 
 //or format the date into the same format as the html form input
 function x_days_ago(X, Y){
@@ -150,15 +150,17 @@ function x_days_ago(X, Y){
 document.getElementById("date_sel").value = x_days_ago(0, 1);
 document.getElementById("date_sel1").value = x_days_ago(30, 1);
 
+
 function create_labels(s_date, e_date){
     s_date = new Date(s_date);
     e_date = new Date(e_date);
     var time_span = (e_date.getTime() - s_date.getTime())/86400000; //convert to days
     var labels = [];
     console.log('create_labels');
+    console.log(s_date + ' ' + new Date(s_date).getTime())
     console.log(time_span);
     //week day labels
-    if (time_span < 8){
+    if (time_span < 14){
         console.log('short');
         var Day_Names = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
         var day = s_date.getDay(); //get start day
@@ -168,18 +170,8 @@ function create_labels(s_date, e_date){
         }
     }
     
-    //single 'month' lables
-    //30 was chosen to prevent awkward view of JAN 31st,FEB,MARCH 1st 
-    if (time_span > 8 && time_span < 30){
-        console.log('medium');
-        var date = s_date.getDate();
-        for (i=0; i<time_span; i++){
-            labels.push(new Date(s_date.getTime() + i*86400000).getDate());
-        }
-    }
-    
     //longer view labels
-    if (time_span > 29){
+    if (time_span > 13){
         console.log('long');
         var Month_Names = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
         for (i=0; i<time_span+1; i++){
@@ -192,12 +184,12 @@ function create_labels(s_date, e_date){
     return labels;
 }
 
+
 gapi.analytics.ready(function() {
   gapi.analytics.auth.authorize({
     container: 'embed-api-auth-container',
     clientid: '592230852734-lbn3oialjcq154tgs6kjm7lepm8e0qfd.apps.googleusercontent.com'
   });
-
   //google store metric data
   var GAOV = [];
   var GREV = [];
@@ -222,15 +214,19 @@ gapi.analytics.ready(function() {
   .execute();
  
   //event listener
+  viewSelector.on('viewChange', function(data) { run(data); });
   function run(data){
       current_data = data;
       var dates = [
           document.getElementById("date_sel").value, 
           document.getElementById("date_sel1").value];
+      if (dates[0] == "undefined" || dates[1] == "undefined"){
+          return;
+          console.log('return' + dates)
+      };
       dates.sort(); //sorts incase they input the data the wrong way around.
-      var labels = create_labels(dates[1], dates[2]);
+      var labels = create_labels(dates[0], dates[1]);
       dates.unshift(x_days_ago(0, new Date(new Date(dates[0]).getTime()*2 - new Date(dates[1]).getTime())));
-      console.log(dates);
       labels = create_labels(dates[1], dates[2]);
       
       renderWeekOverWeekChart(data.ids, dates, labels);  //aov
@@ -246,11 +242,11 @@ gapi.analytics.ready(function() {
   };
   document.getElementById("date_sel").addEventListener("change", function(){ run(current_data); });
   document.getElementById("date_sel1").addEventListener("change", function(){ run(current_data); });
-  viewSelector.on('viewChange', function(data) { run(data); });
+  
+  
   
  function renderWeekOverWeekChart(ids, dates, labels) {
     var now = moment();
-
     var thisWeek = query({
       'ids': ids,
       'dimensions': 'ga:date,ga:nthDay',
@@ -258,7 +254,6 @@ gapi.analytics.ready(function() {
       'start-date': dates[1],
       'end-date': dates[2]
     });
-
     var lastWeek = query({
       'ids': ids,
       'dimensions': 'ga:date,ga:nthDay',
@@ -266,12 +261,9 @@ gapi.analytics.ready(function() {
       'start-date': dates[0],
       'end-date': dates[1]
     });
-
     Promise.all([thisWeek, lastWeek]).then(function(results) {
-
       var data1 = results[0].rows.map(function(row) { return +row[2]; });
       var data2 = results[1].rows.map(function(row) { return +row[2]; });
-
       var data = {
         labels : labels,
         datasets : [
@@ -293,20 +285,13 @@ gapi.analytics.ready(function() {
           }
         ]
       };
-
       new Chart(makeCanvas('chart-1-container')).Line(data);
       generateLegend('legend-1-container', data.datasets);
     });
   }
-
-
-
-
-
  
   function renderWeekOverWeekChart2(ids, dates, labels) {
     var now = moment();
-
     var thisWeek2 = query({
       'ids': ids,
       'dimensions': 'ga:date,ga:nthDay',
@@ -314,7 +299,6 @@ gapi.analytics.ready(function() {
       'start-date': dates[1],
       'end-date': dates[2]
     });
-
     var lastWeek2 = query({
       'ids': ids,
       'dimensions': 'ga:date,ga:nthDay',
@@ -322,12 +306,9 @@ gapi.analytics.ready(function() {
       'start-date': dates[0],
       'end-date': dates[1]
     });
-
     Promise.all([thisWeek2, lastWeek2]).then(function(results) {
-
       var data1 = results[0].rows.map(function(row) { return +row[2]; });
       var data2 = results[1].rows.map(function(row) { return +row[2]; });
-
       var data = {
         labels : labels,
         datasets : [
@@ -349,7 +330,6 @@ gapi.analytics.ready(function() {
           }
         ]
       };
-
       new Chart(makeCanvas('chart-2-container')).Line(data);
       generateLegend('legend-2-container', data.datasets);
     });
@@ -362,7 +342,6 @@ gapi.analytics.ready(function() {
   
   function renderWeekOverWeekChart3(ids, dates, labels) {
     var now = moment();
-
     var thisWeek3 = query({
       'ids': ids,
       'dimensions': 'ga:date,ga:nthDay',
@@ -370,7 +349,6 @@ gapi.analytics.ready(function() {
       'start-date': dates[1],
       'end-date': dates[2]
     });
-
     var lastWeek3 = query({
       'ids': ids,
       'dimensions': 'ga:date,ga:nthDay',
@@ -378,16 +356,14 @@ gapi.analytics.ready(function() {
       'start-date': dates[0],
       'end-date': dates[1]
     });
-
     Promise.all([thisWeek3, lastWeek3]).then(function(results) {
-
       var data1 = results[0].rows.map(function(row) { return +row[2]; });
       var data2 = results[1].rows.map(function(row) { return +row[2]; });
       
       //calcs
       GREV = total(data2);
       if (SESS != ""){
-          PVV = SESS / GREV;
+          PVV = GREV / SESS;
       }
       if (TRAN != ""){
         GAOV = GREV / TRAN;
@@ -395,8 +371,6 @@ gapi.analytics.ready(function() {
       document.getElementById("GREV").innerHTML = 'REV: ' + GREV;
       document.getElementById("GAOV").innerHTML = 'AOV: ' + GAOV;
       document.getElementById("PVV").innerHTML = 'PVV: ' + PVV;
-
-
       var data = {
         labels : labels,
         datasets : [
@@ -418,7 +392,6 @@ gapi.analytics.ready(function() {
           }
         ]
       };
-
       new Chart(makeCanvas('chart-3-container')).Line(data);
       generateLegend('legend-3-container', data.datasets);
     });
@@ -439,7 +412,6 @@ gapi.analytics.ready(function() {
       'start-date': dates[1],
       'end-date': dates[2]
     });
-
     var lastWeek4 = query({
       'ids': ids,
       'dimensions': 'ga:date,ga:nthDay',
@@ -447,12 +419,9 @@ gapi.analytics.ready(function() {
       'start-date': dates[0],
       'end-date': dates[1]
     });
-
     Promise.all([thisWeek4, lastWeek4]).then(function(results) {
-
       var data1 = results[0].rows.map(function(row) { return +row[2]; });
       var data2 = results[1].rows.map(function(row) { return +row[2]; });
-
       var data = {
         labels : labels,
         datasets : [
@@ -474,7 +443,6 @@ gapi.analytics.ready(function() {
           }
         ]
       };
-
       new Chart(makeCanvas('chart-4-container')).Line(data);
       generateLegend('legend-4-container', data.datasets);
     });
@@ -482,7 +450,6 @@ gapi.analytics.ready(function() {
   
    function renderWeekOverWeekChart5(ids, dates, labels) {
     var now = moment();
-
     var thisWeek5 = query({
       'ids': ids,
       'dimensions': 'ga:date,ga:nthDay',
@@ -490,7 +457,6 @@ gapi.analytics.ready(function() {
       'start-date': dates[1],
       'end-date': dates[2]
     });
-
     var lastWeek5 = query({
       'ids': ids,
       'dimensions': 'ga:date,ga:nthDay',
@@ -498,9 +464,7 @@ gapi.analytics.ready(function() {
       'start-date': dates[0],
       'end-date': dates[1]
     });
-
     Promise.all([thisWeek5, lastWeek5]).then(function(results) {
-
       var data1 = results[0].rows.map(function(row) { return +row[2]; });
       var data2 = results[1].rows.map(function(row) { return +row[2]; });
       
@@ -514,7 +478,6 @@ gapi.analytics.ready(function() {
       document.getElementById("TRAN").innerHTML = 'Transactions: ' + TRAN;
       document.getElementById("CR").innerHTML = 'CR: ' + CR;
       document.getElementById("GAOV").innerHTML = 'AOV: ' + GAOV;
-
       var data = {
         labels : labels,
         datasets : [
@@ -536,7 +499,6 @@ gapi.analytics.ready(function() {
           }
         ]
       };
-
       new Chart(makeCanvas('chart-6-container')).Line(data);
       generateLegend('legend-6-container', data.datasets);
     });
@@ -544,7 +506,6 @@ gapi.analytics.ready(function() {
   
    function renderWeekOverWeekChart6(ids, dates, labels) {
     var now = moment();
-
     var thisWeek6 = query({
       'ids': ids,
       'dimensions': 'ga:date,ga:nthDay',
@@ -552,7 +513,6 @@ gapi.analytics.ready(function() {
       'start-date': dates[1],
       'end-date': dates[2]
     });
-
     var lastWeek6 = query({
       'ids': ids,
       'dimensions': 'ga:date,ga:nthDay',
@@ -560,21 +520,18 @@ gapi.analytics.ready(function() {
       'start-date': dates[0],
       'end-date': dates[1]
     });
-
     Promise.all([thisWeek6, lastWeek6]).then(function(results) {
-
       var data1 = results[0].rows.map(function(row) { return +row[2]; });
       var data2 = results[1].rows.map(function(row) { return +row[2]; });
       
       SESS = total(data2);
-      PVV = SESS / GREV;
+      PVV = GREV / SESS;
       if (TRAN != ""){
         CR = TRAN / SESS;
       }
       document.getElementById("SESS").innerHTML = 'Sessions: ' + SESS;
       document.getElementById("CR").innerHTML = 'CR: ' + CR;
       document.getElementById("PVV").innerHTML = 'PVV: ' + PVV;
-
       var data = {
         labels : labels,
         datasets : [
@@ -596,7 +553,6 @@ gapi.analytics.ready(function() {
           }
         ]
       };
-
       new Chart(makeCanvas('chart-7-container')).Line(data);
       generateLegend('legend-7-container', data.datasets);
     });
@@ -612,10 +568,8 @@ function ShopStageChart(ids) {
       'dimensions': 'ga:shoppingStage',
       'metrics': 'ga:sessions',
       'sort': '-ga:sessions',
-      'max-results': 10
     })
     .then(function(response) {
-
       var data = [];
       var colors = ['#4D5360','#949FB1','#D4CCC5','#E2EAE9','#F7464A'];
      
@@ -635,7 +589,6 @@ function ShopStageChart(ids) {
   
  
   
-
   /**
    * Extend the Embed APIs `gapi.analytics.report.Data` component to
    * return a promise the is fulfilled with the value returned by the API.
@@ -650,8 +603,6 @@ function ShopStageChart(ids) {
           .execute();
     });
   }
-
-
   /**
    * Create a new canvas inside the specified element. Set it to be the width
    * and height of its container.
@@ -662,16 +613,12 @@ function ShopStageChart(ids) {
     var container = document.getElementById(id);
     var canvas = document.createElement('canvas');
     var ctx = canvas.getContext('2d');
-
     container.innerHTML = '';
     canvas.width = container.offsetWidth;
     canvas.height = container.offsetHeight;
     container.appendChild(canvas);
-
     return ctx;
   }
-
-
   /**
    * Create a visual legend inside the specified element based off of a
    * Chart.js dataset.
@@ -687,15 +634,11 @@ function ShopStageChart(ids) {
           escapeHtml(label) + '</li>';
     }).join('');
   }
-
-
   // Set some global Chart.js defaults.
   Chart.defaults.global.animationSteps = 60;
   Chart.defaults.global.animationEasing = 'easeInOutQuart';
   Chart.defaults.global.responsive = true;
   Chart.defaults.global.maintainAspectRatio = false;
-
-
   /**
    * Escapes a potentially unsafe HTML string.
    * @param {string} str An string that may contain HTML entities.
@@ -706,10 +649,7 @@ function ShopStageChart(ids) {
     div.appendChild(document.createTextNode(str));
     return div.innerHTML;
   }
-
 });
-
-
 </script>
 </body>
 </html>
